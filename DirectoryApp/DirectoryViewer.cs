@@ -124,21 +124,22 @@ namespace DirectoryApp
             bool previousPartIsGreater = false;
             List<int[]> folderVersionsParts = folderVersions.Select(f => new int[4] { f.Major, f.Minor, f.Build, f.Revision }).ToList<int[]>();
             int[] versionParts = new int[4] { version.Major, version.Minor, version.Build, version.Revision };
-            versionParts = FindVersion(folderVersionsParts, versionParts, previousPartIsGreater, 0);
-            if (versionParts[0] == -1)
+            int[] foundVersionParts;
+            if (!FindVersion(folderVersionsParts, versionParts, previousPartIsGreater, 0, out foundVersionParts))
                 return "";
             else
             {
                 Version foundVersion;
-                Version.TryParse(String.Join(".", versionParts), out foundVersion);
+                Version.TryParse(String.Join(".", foundVersionParts), out foundVersion);
                 return subDirs[folderVersions.IndexOf(foundVersion)].Name;
             }
         }
 
-        private static int[] FindVersion(List<int[]> folderVersionsParts, int[] versionParts, bool previousPartIsGreater, int j)
+        private static bool FindVersion(List<int[]> folderVersionsParts, int[] versionParts, bool previousPartIsGreater, int j, out int[] foundVersion)
         {
             List<int[]> filteredFolderVersionsParts = new List<int[]>(folderVersionsParts);
-            int[] foundVersion = new int[] { -1, -1, -1, -1 };
+            bool found = false;
+            foundVersion = new int[] { -1, -1, -1, -1 };
             if (j <= 3)
                 if (!previousPartIsGreater)
                 {
@@ -147,17 +148,20 @@ namespace DirectoryApp
                         versionPart = 0;
                     filteredFolderVersionsParts.RemoveAll(f => versionPart < f[j]);
                     if (filteredFolderVersionsParts.Count == 0)
-                        return foundVersion;
+                        return false;
                     filteredFolderVersionsParts = filteredFolderVersionsParts.OrderBy(f => versionPart - f[j]).ToList<int[]>();
                     if (j == 3)
-                        return filteredFolderVersionsParts.First();
+                    {
+                        foundVersion = filteredFolderVersionsParts.First();
+                        return true;
+                    }
                     for (int i = 0; i < filteredFolderVersionsParts.Count; i++)
                     {
                         if (versionPart - filteredFolderVersionsParts[i][j] > 0)
                             previousPartIsGreater = true;
-                        if (foundVersion[0] == -1)
-                            foundVersion = FindVersion(filteredFolderVersionsParts.Where(f => f[j] == filteredFolderVersionsParts[i][j]).ToList<int[]>(), versionParts,
-                                previousPartIsGreater, j + 1);
+                        if (!found)
+                            found = FindVersion(filteredFolderVersionsParts.Where(f => f[j] == filteredFolderVersionsParts[i][j]).ToList<int[]>(), versionParts,
+                                previousPartIsGreater, j + 1, out foundVersion);
                         else
                             break;
                     }
@@ -166,15 +170,19 @@ namespace DirectoryApp
                 {
                     filteredFolderVersionsParts = filteredFolderVersionsParts.OrderByDescending(f => f[j]).ToList<int[]>();
                     if (j == 3)
-                        return filteredFolderVersionsParts.First();
+                    {
+                        foundVersion = filteredFolderVersionsParts.First();
+                        return true;
+                    }
                     for (int i = 0; i < filteredFolderVersionsParts.Count; i++)
-                        if (foundVersion[0] == -1)
-                            foundVersion = FindVersion(filteredFolderVersionsParts.Where(f => f[j] == filteredFolderVersionsParts[i][j]).ToList<int[]>(), versionParts, previousPartIsGreater, j + 1);
+                        if (!found)
+                            found = FindVersion(filteredFolderVersionsParts.Where(f => f[j] == filteredFolderVersionsParts[i][j]).ToList<int[]>(), versionParts, 
+                                previousPartIsGreater, j + 1, out foundVersion);
                         else
                             break;
                 }
 
-            return foundVersion;
+            return found;
         }
 
         private static string FindFolderOfDate(DirectoryInfo rootDirectory, DateTime folderDate)
