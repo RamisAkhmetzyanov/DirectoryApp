@@ -6,8 +6,8 @@ namespace DirectoryApp
     {
         static void Main(string[] args)
         {
-            string input = "",
-                output;
+            string input = "";
+            string output;
             Console.WriteLine("Enter command (for example:'%SYSTEMDRIVE%\\Test|41.0.1.0').");
             Console.WriteLine("To Exit Application Enter 'Exit'. ");
             while (input != "Exit")
