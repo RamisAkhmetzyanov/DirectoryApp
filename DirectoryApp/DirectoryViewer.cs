@@ -22,7 +22,16 @@ namespace DirectoryApp
             string command = input.Substring(separatorIndex + 1, input.Length - separatorIndex - 1);
             RootFolderPath = Environment.ExpandEnvironmentVariables(RootFolderPath);
 
-            DirectoryInfo RootDirectory = new DirectoryInfo(RootFolderPath);
+            DirectoryInfo RootDirectory;
+            try
+            {
+                RootDirectory = new DirectoryInfo(RootFolderPath);
+            }
+            catch
+            {
+                message = "Entered path is not valid or not accessible for creating subdirectories";
+                return false;
+            }
             if (!RootDirectory.Exists)
             {
                 try
@@ -55,7 +64,7 @@ namespace DirectoryApp
                 foundFolderName = FindFolderOfVersion(RootDirectory, version);
                 if (foundFolderName == "")
                 {
-                    message = "Folder of version " + version.ToString() + " or previous not found";
+                    message = String.Concat("Folder of version ", version.ToString(), " or previous not found");
                     return false;
                 }
                 else
@@ -68,22 +77,22 @@ namespace DirectoryApp
             if (isDate)
             {
                 foundFolderName = FindFolderOfDate(RootDirectory, date);
-                if (foundFolderName == "")
+                if (foundFolderName.Equals(""))
                 {
-                    message = "Folder of date " + command + " or early not found";
+                    message = String.Concat("Folder of date ", command, " or early not found");
                     return false;
                 }
             }
             if (command.ToLower().Equals("latest"))
             {
                 foundFolderName = FindFolderOfLatestDate(RootDirectory);
-                if (foundFolderName == "")
+                if (foundFolderName.Equals(""))
                 {
                     message = "Folder of latest date not found. There are no subdirectories named by date";
                     return false;
                 }
             }
-            if (foundFolderName == "")
+            if (foundFolderName.Equals(""))
             {
                 message = "Entered command is not valid. Enter version, date or 'Latest' command";
                 return false;
@@ -123,8 +132,6 @@ namespace DirectoryApp
                 }
                 else
                     subDirs.RemoveAt(i);
-            if (folderVersions.Count == 0)
-                return "";
             folderVersions.Sort();
             int index = folderVersions.Where(f => f.CompareTo(version) <= 0).Count() - 1;
             if (index == -1)
@@ -138,7 +145,6 @@ namespace DirectoryApp
             List<DirectoryInfo> subDirs = rootDirectory.GetDirectories().ToList<DirectoryInfo>();
             if (subDirs == null || subDirs.Count() == 0)
                 return "";
-            
             List<DateTime> folderDates = new List<DateTime>();
             DateTime date = new DateTime();
             int i = 0;
