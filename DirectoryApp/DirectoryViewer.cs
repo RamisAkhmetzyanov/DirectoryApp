@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 
 namespace DirectoryApp
 {
@@ -49,7 +48,7 @@ namespace DirectoryApp
             Version version;
             DateTime date;
             bool isVersion = Version.TryParse(command, out version);
-            bool isDate = DateTime.TryParse(command, out date) && !isVersion; //подумать!!!!!!!!!!!!!!!!!!!!!!
+            bool isDate = DateTime.TryParse(command, out date) && !isVersion;
             string foundFolderName = "";
             if (isVersion)
             {
@@ -115,74 +114,23 @@ namespace DirectoryApp
                 return "";
             List<Version> folderVersions = new List<Version>();
             Version v = new Version();
-            for (int i = 0; i < subDirs.Count(); i++)
+            int i = 0;
+            while (i < subDirs.Count())
                 if (Version.TryParse(subDirs[i].Name, out v))
-                    folderVersions.Add(v);
-            if (folderVersions.Count == 0)
-                return "";
-            
-            bool previousPartIsGreater = false;
-            List<int[]> folderVersionsParts = folderVersions.Select(f => new int[4] { f.Major, f.Minor, f.Build, f.Revision }).ToList<int[]>();
-            int[] versionParts = new int[4] { version.Major, version.Minor, version.Build, version.Revision };
-            int[] foundVersionParts;
-            if (!FindVersion(folderVersionsParts, versionParts, previousPartIsGreater, 0, out foundVersionParts))
-                return "";
-            else
-            {
-                Version foundVersion;
-                Version.TryParse(String.Join(".", foundVersionParts), out foundVersion);
-                return subDirs[folderVersions.IndexOf(foundVersion)].Name;
-            }
-        }
-
-        private static bool FindVersion(List<int[]> folderVersionsParts, int[] versionParts, bool previousPartIsGreater, int j, out int[] foundVersion)
-        {
-            List<int[]> filteredFolderVersionsParts = new List<int[]>(folderVersionsParts);
-            bool found = false;
-            foundVersion = new int[] { -1, -1, -1, -1 };
-            if (j <= 3)
-                if (!previousPartIsGreater)
                 {
-                    int versionPart = versionParts[j];
-                    if (versionPart == -1)
-                        versionPart = 0;
-                    filteredFolderVersionsParts.RemoveAll(f => versionPart < f[j]);
-                    if (filteredFolderVersionsParts.Count == 0)
-                        return false;
-                    filteredFolderVersionsParts = filteredFolderVersionsParts.OrderBy(f => versionPart - f[j]).ToList<int[]>();
-                    if (j == 3)
-                    {
-                        foundVersion = filteredFolderVersionsParts.First();
-                        return true;
-                    }
-                    for (int i = 0; i < filteredFolderVersionsParts.Count; i++)
-                    {
-                        if (versionPart - filteredFolderVersionsParts[i][j] > 0)
-                            previousPartIsGreater = true;
-                        if (!found)
-                            found = FindVersion(filteredFolderVersionsParts.Where(f => f[j] == filteredFolderVersionsParts[i][j]).ToList<int[]>(), versionParts,
-                                previousPartIsGreater, j + 1, out foundVersion);
-                        else
-                            break;
-                    }
+                    folderVersions.Add(v);
+                    i++;
                 }
                 else
-                {
-                    filteredFolderVersionsParts = filteredFolderVersionsParts.OrderByDescending(f => f[j]).ToList<int[]>();
-                    if (j == 3)
-                    {
-                        foundVersion = filteredFolderVersionsParts.First();
-                        return true;
-                    }
-                    for (int i = 0; i < filteredFolderVersionsParts.Count; i++)
-                        if (!found)
-                            found = FindVersion(filteredFolderVersionsParts.Where(f => f[j] == filteredFolderVersionsParts[i][j]).ToList<int[]>(), versionParts, 
-                                previousPartIsGreater, j + 1, out foundVersion);
-                        else
-                            break;
-                }
+                    subDirs.RemoveAt(i);
+            if (folderVersions.Count == 0)
+                return "";
+            folderVersions.Sort();
+            int index = folderVersions.Where(f => f.CompareTo(version) <= 0).Count() - 1;
+            if (index == -1)
+                return "";
 
-            return found;
+            return subDirs.Find(s => Version.Parse(s.Name).Equals(folderVersions[index])).Name;
         }
 
         private static string FindFolderOfDate(DirectoryInfo rootDirectory, DateTime folderDate)
@@ -190,23 +138,24 @@ namespace DirectoryApp
             List<DirectoryInfo> subDirs = rootDirectory.GetDirectories().ToList<DirectoryInfo>();
             if (subDirs == null || subDirs.Count() == 0)
                 return "";
-
-            int index = -1;
+            
+            List<DateTime> folderDates = new List<DateTime>();
             DateTime date = new DateTime();
-            DateTime foundDate = new DateTime();
-            TimeSpan dateDiff = TimeSpan.MaxValue;
-            for (int i = 0; i < subDirs.Count(); i++)
-            {
-                if (DateTime.TryParse(subDirs[i].Name, out date) && folderDate >= date && folderDate - date < dateDiff)
+            int i = 0;
+            while (i < subDirs.Count())
+                if (DateTime.TryParse(subDirs[i].Name, out date))
                 {
-                    foundDate = date;
-                    index = i;
-                    dateDiff = folderDate - date;
+                    folderDates.Add(date);
+                    i++;
                 }
-            }
+                else
+                    subDirs.RemoveAt(i);
+            folderDates.Sort();
+            int index = folderDates.Where(f => f.CompareTo(folderDate) <= 0).Count() - 1;
             if (index == -1)
                 return "";
-            return subDirs[index].Name;
+
+            return subDirs.Find(s => DateTime.Parse(s.Name).Equals(folderDates[index])).Name;
         }
 
         private static string FindFolderOfLatestDate(DirectoryInfo rootDirectory)
@@ -215,18 +164,16 @@ namespace DirectoryApp
             if (subDirs == null || subDirs.Count() == 0)
                 return "";
 
-            DateTime d = new DateTime();
-            DateTime latestDate = DateTime.MinValue;
-            int index = -1;
-            for (int i = 0; i < subDirs.Count(); i++)
-                if (DateTime.TryParse(subDirs[i].Name, out d) && d > latestDate)
-                {
-                    latestDate = d;
-                    index = i;
-                }
-            if (index == -1)
-                return "";
-            return subDirs[index].Name;
+            DateTime d;
+            Version v;
+            int i = 0;
+            while (i < subDirs.Count())
+                if (!DateTime.TryParse(subDirs[i].Name, out d) && !Version.TryParse(subDirs[i].Name, out v))
+                    subDirs.RemoveAt(i);
+                else
+                    i++;
+
+            return subDirs.OrderByDescending(s => s.CreationTime).First().Name;
         }
         
     }

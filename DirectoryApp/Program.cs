@@ -15,6 +15,7 @@ namespace DirectoryApp
                 input = Console.ReadLine();
                 DirectoryViewer.ResolveInput(input, out output);
                 Console.WriteLine(output);
+                Console.WriteLine();
             }
         }
     }
